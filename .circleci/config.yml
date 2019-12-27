@@ -1,5 +1,6 @@
 version: 2.1
 
+
 commands:
  build-docker:
   description: "Build and deploy a docker box"
@@ -15,6 +16,7 @@ commands:
       command: ./docker/build << parameters.box >> $CIRCLE_BRANCH
    - run: ./docker/push << parameters.box >> $CIRCLE_BRANCH
 
+
 jobs:
  build:
   docker:
@@ -22,15 +24,19 @@ jobs:
   steps:
    - checkout
 
+
    # warm nix
    - run: nix-shell --run echo
+
 
    # run env tests
    - run: ./test/nix-env.sh
    - run: ./test/environment.sh
 
+
    # run shell tests
    - run: nix-shell --run hn-test
+
 
  debian:
   docker:
@@ -38,12 +44,14 @@ jobs:
   steps:
    - checkout
 
+
    - run:
       command: |
        . /home/docker/.nix-profile/etc/profile.d/nix.sh
        nix-shell --run echo
        ./test/nix-env.sh
        nix-shell --run hn-test
+
 
  ubuntu:
   docker:
@@ -51,12 +59,30 @@ jobs:
   steps:
    - checkout
 
+
    - run:
       command: |
        . /home/docker/.nix-profile/etc/profile.d/nix.sh
        nix-shell --run echo
        ./test/nix-env.sh
        nix-shell --run hn-test
+
+
+ manjaro:
+  docker:
+   - image: jonathonf/manjaro:latest
+  steps:
+   - checkout
+
+
+   - run:
+      command: |
+      . /home/docker/.nix-profile/etc/profile.d/nix.sh
+      nix-shell --run echo
+      ./test/nix-env.sh
+      nix-shell --run hn-test
+
+
 
  # THIS IS SECURITY SENSITVE
  # READ THESE
@@ -77,6 +103,7 @@ jobs:
        git config user.email "$GITHUB_PAGES_DEPLOY_EMAIL"
        nix-shell --run hn-docs-github-pages
 
+
  mac:
   macos:
    xcode: "10.2.0"
@@ -91,12 +118,14 @@ jobs:
        ./test/nix-env.sh
        nix-shell --run hn-test
 
+
  docker-build-latest:
   resource_class: large
   machine: true
   steps:
    - build-docker:
       box: latest
+
 
  docker-build-ubuntu:
   resource_class: large
@@ -105,12 +134,14 @@ jobs:
    - build-docker:
       box: ubuntu
 
+
  docker-build-debian:
   resource_class: large
   machine: true
   steps:
    - build-docker:
       box: debian
+
 
  docker-build-minimal:
   resource_class: large
@@ -119,6 +150,7 @@ jobs:
    - build-docker:
       box: minimal
 
+
  docker-build-sim2h_server:
   resource_class: large
   machine: true
@@ -126,12 +158,23 @@ jobs:
    - build-docker:
       box: sim2h_server
 
+
  docker-build-trycp_server:
   resource_class: large
   machine: true
   steps:
    - build-docker:
       box: trycp_server
+
+
+ docker.build.manjaro:
+  machine: true
+  steps:
+   - checkout
+   - run: echo "$DOCKER_PASS" | docker login --username $DOCKER_USER --password-stdin
+   - run: docker build ./docker -f ./docker/Dockerfile.manjaro --no-cache -t holochain/holonix:manjaro
+   - run: docker push holochain/holonix:manjaro
+
 
 workflows:
  version: 2
@@ -141,6 +184,7 @@ workflows:
    - debian
    - ubuntu
    - mac
+   - manjaro
    - docker-build-latest:
       filters:
        branches:
@@ -171,6 +215,15 @@ workflows:
          - 2019-12-19-exam-boxes
       requires:
        - build
+   - docker.build.manjaro:
+      filters:
+       branches:
+        only: 
+         - love
+         - master
+         - develop
+         - 2019-12-19-exam-boxes
+      requires:ld
    - docker-build-minimal:
       filters:
        branches:
